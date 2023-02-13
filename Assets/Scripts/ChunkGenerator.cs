@@ -29,7 +29,13 @@ public class ChunkGenerator : MonoBehaviour
 
     void SetSeedAndOffset() {
         if (useRandomSeed) seed = Time.time.GetHashCode();
-        else seed = m_Seed.GetHashCode();
+        else {
+            if (int.TryParse(m_Seed, out int seedInt)) {
+                seed = seedInt;
+            } else {
+                seed = m_Seed.GetHashCode();
+            }
+        }
 
         offset = GetRandomOffset(seed);
     }

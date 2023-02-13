@@ -245,12 +245,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   chunkSize: {x: 32, y: 32}
-  blockThreshold: 0.405
+  blockThreshold: 0.5
   mapSize: 270
   scale: 15
   blocksPerUnit: 1
-  useRandomSeed: 0
-  m_Seed: 1102876856
+  useRandomSeed: 1
+  m_Seed: 
 --- !u!4 &684971344
 Transform:
   m_ObjectHideFlags: 0

@@ -108,6 +108,32 @@ public class Chunk : MonoBehaviour {
                     case 5:
                         Debug.LogError($"Square Case 5 Has Not Been Accounted For ({Pos.x}:{x}, {Pos.y}:{y}) (Center: {center}:{IsCenterBlock(x, y)})\n\nSeed: {Seed}\nBlockThreshold: {BlockThreshold}\nBlocksPerUnit: {1/UnitsPerBlock}\nChunk Size: ({Size.x}, {Size.y})");
 
+                        meshData.AddVertFixed(x + 1, y);
+                        meshData.AddVertLerp(new Vector2Int(x, y), new Vector2Int(x + 1, y));
+                        if (isCenterBlock) meshData.AddCenterFixed(x, y); else meshData.AddCenterLerp(x, y, new Vector2Int(x + 1, y + 1));
+
+                        meshData.AddVertFixed(x + 1, y);
+                        if (isCenterBlock) meshData.AddCenterFixed(x, y); else meshData.AddCenterLerp(x, y, new Vector2Int(x + 1, y + 1));
+                        meshData.AddVertLerp(new Vector2Int(x + 1, y), new Vector2Int(x + 1, y + 1));
+
+                        meshData.AddVertFixed(x, y + 1);
+                        meshData.AddVertLerp(new Vector2Int(x, y + 1), new Vector2Int(x + 1, y + 1));
+                        if (isCenterBlock) meshData.AddCenterFixed(x, y); else meshData.AddCenterLerp(x, y, new Vector2Int(x, y + 1));
+
+                        meshData.AddVertFixed(x, y + 1);
+                        if (isCenterBlock) meshData.AddCenterFixed(x, y); else meshData.AddCenterLerp(x, y, new Vector2Int(x, y + 1));
+                        meshData.AddVertLerp(new Vector2Int(x, y + 1), new Vector2Int(x, y));
+
+                        if (IsCenterBlock(x, y)) {
+                            meshData.AddVertLerp(new Vector2Int(x, y), new Vector2Int(x + 1, y));
+                            meshData.AddVertLerp(new Vector2Int(x, y), new Vector2Int(x, y + 1));
+                            meshData.AddCenterLerp(x, y, new Vector2Int(x, y), true);
+
+                            meshData.AddVertLerp(new Vector2Int(x, y + 1), new Vector2Int(x + 1, y + 1));
+                            meshData.AddVertLerp(new Vector2Int(x + 1, y), new Vector2Int(x + 1, y + 1));
+                            meshData.AddCenterLerp(x, y, new Vector2Int(x + 1, y + 1), true);
+                        }
+
                         break;
                     case 6:
                         meshData.AddVertFixed(x + 1, y + 1);
