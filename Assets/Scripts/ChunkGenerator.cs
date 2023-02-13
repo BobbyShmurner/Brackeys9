@@ -8,9 +8,9 @@ public class ChunkGenerator : MonoBehaviour
 {
     [SerializeField] Vector2Int chunkSize = new Vector2Int(32, 32);
     [SerializeField] [Range(0f, 1f)] float blockThreshold = 0.5f;
-    [SerializeField] float scale = 15;
+    [SerializeField] [Range(1f, 500f)] float mapSize = 250;
+    [SerializeField] [Range(1f, 20f)] float scale = 15;
     [SerializeField] float blocksPerUnit = 1;
-    [SerializeField] bool lerp = true;
     [SerializeField] bool useRandomSeed = true;
     [SerializeField] string m_Seed;
 
@@ -45,8 +45,8 @@ public class ChunkGenerator : MonoBehaviour
 
         SetSeedAndOffset();
 
-        for (int x = 0; x < 3; x++) {
-            for (int y = 0; y < 3; y++) {
+        for (int x = -2; x < 2; x++) {
+            for (int y = -2; y < 2; y++) {
                 Chunk chunk = CreateChunk(new Vector2Int(x, y));
                 chunk.GenerateMesh();
             }
@@ -56,11 +56,15 @@ public class ChunkGenerator : MonoBehaviour
     public Chunk CreateChunk(Vector2Int pos) {
         List<List<float>> blocks = new List<List<float>>();
 
-        for (int x = 0; x < chunkSize.x; x++) {
+        // We want to generate an extra point on the right and bottom sides to prevent seams in the chunks
+        for (int x = 0; x < chunkSize.x + 1; x++) {
             List<float> column = new List<float>();
 
-            for (int y = 0; y < chunkSize.y; y++) {
-                column.Add(Mathf.Clamp01(Mathf.PerlinNoise((x + (pos.x * chunkSize.x) + offset) / scale, (y + (pos.y * chunkSize.y) + offset) / scale)));
+            for (int y = 0; y < chunkSize.y + 1; y++) {
+                float noise = Mathf.Clamp01(Mathf.PerlinNoise((x + (pos.x * chunkSize.x) + offset) / scale, (y + (pos.y * chunkSize.y) + offset) / scale));
+                noise *= 1 - Mathf.Clamp01(Mathf.InverseLerp(0, mapSize, Mathf.Abs(pos.x * chunkSize.x + x) + Mathf.Abs(pos.y * chunkSize.y + y)));
+                
+                column.Add(noise);
             }
 
             blocks.Add(column);
@@ -70,7 +74,7 @@ public class ChunkGenerator : MonoBehaviour
         newGO.transform.parent = transform;
 
         Chunk newChunk = newGO.AddComponent<Chunk>();
-        newChunk.Init(seed, blockThreshold, 1 / blocksPerUnit, lerp, pos, blocks);
+        newChunk.Init(seed, blockThreshold, 1 / blocksPerUnit, pos, blocks);
 
         return newChunk;
     }
