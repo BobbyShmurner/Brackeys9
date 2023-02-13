@@ -6,6 +6,7 @@ using Random = System.Random;
 
 public class ChunkGenerator : MonoBehaviour
 {
+    [SerializeField] Material worldMat;
     [SerializeField] Vector2Int chunkSize = new Vector2Int(32, 32);
     [SerializeField] [Range(0f, 1f)] float blockThreshold = 0.5f;
     [SerializeField] [Range(1f, 500f)] float mapSize = 250;
@@ -51,8 +52,8 @@ public class ChunkGenerator : MonoBehaviour
 
         SetSeedAndOffset();
 
-        for (int x = -2; x < 2; x++) {
-            for (int y = -2; y < 2; y++) {
+        for (int x = -5; x < 5; x++) {
+            for (int y = -5; y < 5; y++) {
                 Chunk chunk = CreateChunk(new Vector2Int(x, y));
                 chunk.GenerateMesh();
             }
@@ -81,6 +82,7 @@ public class ChunkGenerator : MonoBehaviour
 
         Chunk newChunk = newGO.AddComponent<Chunk>();
         newChunk.Init(seed, blockThreshold, 1 / blocksPerUnit, pos, blocks);
+        newChunk.GetComponent<MeshRenderer>().sharedMaterial = worldMat;
 
         return newChunk;
     }

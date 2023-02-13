@@ -58,7 +58,7 @@ public class Chunk : MonoBehaviour {
     }
 
     public Vector2 LocalPosToGlobalPos(float x, float y) {
-        return new Vector2(x + Pos.x * Size.x * UnitsPerBlock, y + Pos.y * Size.y * UnitsPerBlock);
+        return new Vector2((x + Pos.x * Size.x) * UnitsPerBlock, (y + Pos.y * Size.y) * UnitsPerBlock);
     }
 
 	public void GenerateMesh() {
@@ -106,8 +106,6 @@ public class Chunk : MonoBehaviour {
 
                         break;
                     case 5:
-                        Debug.LogError($"Square Case 5 Has Not Been Accounted For ({Pos.x}:{x}, {Pos.y}:{y}) (Center: {center}:{IsCenterBlock(x, y)})\n\nSeed: {Seed}\nBlockThreshold: {BlockThreshold}\nBlocksPerUnit: {1/UnitsPerBlock}\nChunk Size: ({Size.x}, {Size.y})");
-
                         meshData.AddVertFixed(x + 1, y);
                         meshData.AddVertLerp(new Vector2Int(x, y), new Vector2Int(x + 1, y));
                         if (isCenterBlock) meshData.AddCenterFixed(x, y); else meshData.AddCenterLerp(x, y, new Vector2Int(x + 1, y + 1));
