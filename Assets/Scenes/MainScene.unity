@@ -278,6 +278,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   worldMat: {fileID: 2100000, guid: f9a3e77b3664eb44998540ff1aab564d, type: 2}
   chunkSize: {x: 32, y: 32}
+  worldSize: {x: 6, y: 6}
   blockThreshold: 0.35
   mapSize: 400
   scale: 20
