@@ -10,6 +10,29 @@ using UnityEngine;
 using Unity.Collections;
 using Unity.Burst;
 
+enum SquarePoint {
+	TopLeft,
+	TopRight,
+	BottomLeft,
+	BottomRight,
+
+	Top,
+	Bottom,
+	Left,
+	Right,
+
+	CenterFixed,
+	CenterFixedTopLeft,
+	CenterFixedTopRight,
+	CenterFixedBottomLeft,
+	CenterFixedBottomRight,
+
+	CenterTopLeft,
+	CenterTopRight,
+	CenterBottomLeft,
+	CenterBottomRight
+}
+
 [BurstCompile]
 struct ChunkJob : IJob {
 	[ReadOnly]
@@ -17,6 +40,9 @@ struct ChunkJob : IJob {
 
     public NativeList<int> tris;
     public NativeList<float3> verts;
+    public NativeHashMap<float3, int> existingVerts;
+
+	public NativeHashMap<float2, float2> connectedVerts;
 
 	public float blockThreshold;
 	public float unitsPerBlock;
@@ -77,189 +103,241 @@ struct ChunkJob : IJob {
 					case 0:
 						break;
 					case 1:
-						AddVertFixed(x, y + 1);
-						AddVertLerp(new int2(x, y + 1), new int2(x + 1, y + 1));
-						AddVertLerp(new int2(x, y + 1), new int2(x, y));
+						AddVert(SquarePoint.BottomLeft, x, y);
+						AddVert(SquarePoint.Bottom, x, y);
+						AddVert(SquarePoint.Left, x, y);
+
+						AddOutline(SquarePoint.Bottom, SquarePoint.Left, x, y);
 						
 						break;
 					case 2:
-						AddVertFixed(x + 1, y + 1);
-						AddVertLerp(new int2(x + 1, y + 1), new int2(x + 1, y));
-						AddVertLerp(new int2(x + 1, y + 1), new int2(x, y + 1));
+						AddVert(SquarePoint.BottomRight, x, y);
+						AddVert(SquarePoint.Right, x, y);
+						AddVert(SquarePoint.Bottom, x, y);
+
+						AddOutline(SquarePoint.Right, SquarePoint.Bottom, x, y);
 
 						break;
 					case 3:
-						AddVertFixed(x, y + 1);
-						AddVertFixed(x + 1, y + 1);
-						AddVertLerp(new int2(x + 1, y + 1), new int2(x + 1, y));
+						AddVert(SquarePoint.BottomLeft, x, y);
+						AddVert(SquarePoint.BottomRight, x, y);
+						AddVert(SquarePoint.Right, x, y);
 
-						AddVertLerp(new int2(x + 1, y + 1), new int2(x + 1, y));
-						AddVertLerp(new int2(x, y + 1), new int2(x, y));
-						AddVertFixed(x, y + 1);
+						AddVert(SquarePoint.Right, x, y);
+						AddVert(SquarePoint.Left, x, y);
+						AddVert(SquarePoint.BottomLeft, x, y);
+
+						AddOutline(SquarePoint.Right, SquarePoint.Left, x, y);
 
 						break;
 					case 4:
-						AddVertFixed(x + 1, y);
-						AddVertLerp(new int2(x + 1, y), new int2(x, y));
-						AddVertLerp(new int2(x + 1, y), new int2(x + 1, y + 1));
+						AddVert(SquarePoint.TopRight, x, y);;
+						AddVert(SquarePoint.Top, x, y);
+						AddVert(SquarePoint.Right, x, y);
+
+						AddOutline(SquarePoint.Top, SquarePoint.Right, x, y);
 
 						break;
 					case 5:
-						AddVertFixed(x + 1, y);
-						AddVertLerp(new int2(x, y), new int2(x + 1, y));
-						if (isCenterBlock) AddCenterFixed(x, y); else AddCenterLerp(x, y, new int2(x + 1, y + 1));
+						AddVert(SquarePoint.TopRight, x, y);;
+						AddVert(SquarePoint.Top, x, y);
+						if (isCenterBlock) AddVert(SquarePoint.CenterFixed, x, y); else AddVert(SquarePoint.CenterBottomRight, x, y);
 
-						AddVertFixed(x + 1, y);
-						if (isCenterBlock) AddCenterFixed(x, y); else AddCenterLerp(x, y, new int2(x + 1, y + 1));
-						AddVertLerp(new int2(x + 1, y), new int2(x + 1, y + 1));
+						AddVert(SquarePoint.TopRight, x, y);;
+						if (isCenterBlock) AddVert(SquarePoint.CenterFixed, x, y); else AddVert(SquarePoint.CenterBottomRight, x, y);
+						AddVert(SquarePoint.Right, x, y);
 
-						AddVertFixed(x, y + 1);
-						AddVertLerp(new int2(x, y + 1), new int2(x + 1, y + 1));
-						if (isCenterBlock) AddCenterFixed(x, y); else AddCenterLerp(x, y, new int2(x, y + 1));
+						AddVert(SquarePoint.BottomLeft, x, y);
+						AddVert(SquarePoint.Bottom, x, y);
+						if (isCenterBlock) AddVert(SquarePoint.CenterFixed, x, y); else AddVert(SquarePoint.CenterBottomLeft, x, y);
 
-						AddVertFixed(x, y + 1);
-						if (isCenterBlock) AddCenterFixed(x, y); else AddCenterLerp(x, y, new int2(x, y + 1));
-						AddVertLerp(new int2(x, y + 1), new int2(x, y));
+						AddVert(SquarePoint.BottomLeft, x, y);
+						if (isCenterBlock) AddVert(SquarePoint.CenterFixed, x, y); else AddVert(SquarePoint.CenterBottomLeft, x, y);
+						AddVert(SquarePoint.Left, x, y);
 
 						if (IsCenterBlock(x, y)) {
-							AddVertLerp(new int2(x, y), new int2(x + 1, y));
-							AddVertLerp(new int2(x, y), new int2(x, y + 1));
-							AddCenterLerp(x, y, new int2(x, y), true);
+							AddVert(SquarePoint.Top, x, y);
+							AddVert(SquarePoint.Left, x, y);
+							AddVert(SquarePoint.CenterFixedTopLeft, x, y);
 
-							AddVertLerp(new int2(x, y + 1), new int2(x + 1, y + 1));
-							AddVertLerp(new int2(x + 1, y), new int2(x + 1, y + 1));
-							AddCenterLerp(x, y, new int2(x + 1, y + 1), true);
+							AddVert(SquarePoint.Bottom, x, y);
+							AddVert(SquarePoint.Right, x, y);
+							AddVert(SquarePoint.CenterFixedBottomRight, x, y);
+
+							AddOutline(SquarePoint.Top, SquarePoint.CenterFixedTopLeft, x, y);
+							AddOutline(SquarePoint.CenterFixedTopLeft, SquarePoint.Left, x, y);
+
+							AddOutline(SquarePoint.Bottom, SquarePoint.CenterFixedBottomRight, x, y);
+							AddOutline(SquarePoint.CenterFixedBottomRight, SquarePoint.Right, x, y);
+						} else {
+							AddOutline(SquarePoint.Bottom, SquarePoint.CenterBottomLeft, x, y);
+							AddOutline(SquarePoint.CenterBottomLeft, SquarePoint.Left, x, y);
+
+							AddOutline(SquarePoint.Top, SquarePoint.CenterTopRight, x, y);
+							AddOutline(SquarePoint.CenterTopRight, SquarePoint.Right, x, y);
 						}
+
+						Debug.Log("5");
 
 						break;
 					case 6:
-						AddVertFixed(x + 1, y + 1);
-						AddVertFixed(x + 1, y);
-						AddVertLerp(new int2(x + 1, y), new int2(x, y));
+						AddVert(SquarePoint.BottomRight, x, y);
+						AddVert(SquarePoint.TopRight, x, y);;
+						AddVert(SquarePoint.Top, x, y);
 
-						AddVertLerp(new int2(x + 1, y), new int2(x, y));
-						AddVertLerp(new int2(x + 1, y + 1), new int2(x, y + 1));
-						AddVertFixed(x + 1, y + 1);
+						AddVert(SquarePoint.Top, x, y);
+						AddVert(SquarePoint.Bottom, x, y);
+						AddVert(SquarePoint.BottomRight, x, y);
+
+						AddOutline(SquarePoint.Top, SquarePoint.Bottom, x, y);
 
 						break;
 					case 7:
-						AddVertFixed(x, y + 1);
-						AddVertFixed(x + 1, y + 1);
-						AddVertFixed(x + 1, y);
+						AddVert(SquarePoint.BottomLeft, x, y);
+						AddVert(SquarePoint.BottomRight, x, y);
+						AddVert(SquarePoint.TopRight, x, y);;
 
-						AddVertFixed(x, y + 1);
-						AddVertFixed(x + 1, y);
-						AddVertLerp(new int2(x + 1, y), new int2(x, y));
+						AddVert(SquarePoint.BottomLeft, x, y);
+						AddVert(SquarePoint.TopRight, x, y);;
+						AddVert(SquarePoint.Top, x, y);
 
-						AddVertFixed(x, y + 1);
-						AddVertLerp(new int2(x, y), new int2(x + 1, y));
-						AddVertLerp(new int2(x, y), new int2(x, y + 1));
+						AddVert(SquarePoint.BottomLeft, x, y);
+						AddVert(SquarePoint.Top, x, y);
+						AddVert(SquarePoint.Left, x, y);
+
+						AddOutline(SquarePoint.Top, SquarePoint.Left, x, y);
 
 						break;
 					case 8:
-						AddVertFixed(x, y);
-						AddVertLerp(new int2(x, y), new int2(x, y + 1));
-						AddVertLerp(new int2(x, y), new int2(x + 1, y));
+						AddVert(SquarePoint.TopLeft, x, y);
+						AddVert(SquarePoint.Left, x, y);
+						AddVert(SquarePoint.Top, x, y);
+
+						AddOutline(SquarePoint.Left, SquarePoint.Top, x, y);
 
 						break;
 					case 9:
-						AddVertFixed(x, y);
-						AddVertFixed(x, y + 1);
-						AddVertLerp(new int2(x + 1, y), new int2(x, y));
+						AddVert(SquarePoint.TopLeft, x, y);
+						AddVert(SquarePoint.BottomLeft, x, y);
+						AddVert(SquarePoint.Top, x, y);
 
-						AddVertFixed(x, y + 1);
-						AddVertLerp(new int2(x + 1, y + 1), new int2(x, y + 1));
-						AddVertLerp(new int2(x + 1, y), new int2(x, y));
+						AddVert(SquarePoint.BottomLeft, x, y);
+						AddVert(SquarePoint.Bottom, x, y);
+						AddVert(SquarePoint.Top, x, y);
+
+						AddOutline(SquarePoint.Bottom, SquarePoint.Top, x, y);
 
 						break;
 					case 10:
-						AddVertFixed(x, y);
-						AddVertLerp(new int2(x, y), new int2(x, y + 1));
-						if (isCenterBlock) AddCenterFixed(x, y); else AddCenterLerp(x, y, new int2(x, y));
+						AddVert(SquarePoint.TopLeft, x, y);
+						AddVert(SquarePoint.Left, x, y);
+						if (isCenterBlock) AddVert(SquarePoint.CenterFixed, x, y); else AddVert(SquarePoint.CenterTopLeft, x, y);
 
-						AddVertFixed(x, y);
-						if (isCenterBlock) AddCenterFixed(x, y); else AddCenterLerp(x, y, new int2(x, y));
-						AddVertLerp(new int2(x, y), new int2(x + 1, y));
+						AddVert(SquarePoint.TopLeft, x, y);
+						if (isCenterBlock) AddVert(SquarePoint.CenterFixed, x, y); else AddVert(SquarePoint.CenterTopLeft, x, y);
+						AddVert(SquarePoint.Top, x, y);
 
-						AddVertFixed(x + 1, y + 1);
-						AddVertLerp(new int2(x + 1, y), new int2(x + 1, y + 1));
-						if (isCenterBlock) AddCenterFixed(x, y); else AddCenterLerp(x, y, new int2(x + 1, y + 1));
+						AddVert(SquarePoint.BottomRight, x, y);
+						AddVert(SquarePoint.Right, x, y);
+						if (isCenterBlock) AddVert(SquarePoint.CenterFixed, x, y); else AddVert(SquarePoint.CenterBottomRight, x, y);
 
-						AddVertFixed(x + 1, y + 1);
-						if (isCenterBlock) AddCenterFixed(x, y); else AddCenterLerp(x, y, new int2(x + 1, y + 1));
-						AddVertLerp(new int2(x, y + 1), new int2(x + 1, y + 1));
+						AddVert(SquarePoint.BottomRight, x, y);
+						if (isCenterBlock) AddVert(SquarePoint.CenterFixed, x, y); else AddVert(SquarePoint.CenterBottomRight, x, y);
+						AddVert(SquarePoint.Bottom, x, y);
 
 						if (IsCenterBlock(x, y)) {
-							AddVertLerp(new int2(x + 1, y), new int2(x + 1, y + 1));
-							AddVertLerp(new int2(x, y), new int2(x + 1, y));
-							AddCenterLerp(x, y, new int2(x + 1, y), true);
+							AddVert(SquarePoint.Right, x, y);
+							AddVert(SquarePoint.Top, x, y);
+							AddVert(SquarePoint.CenterFixedTopRight, x, y);
 
-							AddVertLerp(new int2(x, y), new int2(x, y + 1));
-							AddVertLerp(new int2(x, y + 1), new int2(x + 1, y + 1));
-							AddCenterLerp(x, y, new int2(x, y + 1), true);
+							AddVert(SquarePoint.Left, x, y);
+							AddVert(SquarePoint.Bottom, x, y);
+							AddVert(SquarePoint.CenterFixedBottomLeft, x, y);
+
+							AddOutline(SquarePoint.Right, SquarePoint.CenterFixedTopRight, x, y);
+							AddOutline(SquarePoint.CenterFixedTopRight, SquarePoint.Top, x, y);
+
+							AddOutline(SquarePoint.Left, SquarePoint.CenterFixedBottomLeft, x, y);
+							AddOutline(SquarePoint.CenterFixedBottomLeft, SquarePoint.Bottom, x, y);
+						} else {
+							AddOutline(SquarePoint.Right, SquarePoint.CenterBottomRight, x, y);
+							AddOutline(SquarePoint.CenterBottomRight, SquarePoint.Bottom, x, y);
+
+							AddOutline(SquarePoint.Left, SquarePoint.CenterTopLeft, x, y);
+							AddOutline(SquarePoint.CenterTopLeft, SquarePoint.Top, x, y);
 						}
+
+						Debug.Log("10");
 
 						break;
 					case 11:
-						AddVertFixed(x, y);
-						AddVertFixed(x, y + 1);
-						AddVertFixed(x + 1, y + 1);
+						AddVert(SquarePoint.TopLeft, x, y);
+						AddVert(SquarePoint.BottomLeft, x, y);
+						AddVert(SquarePoint.BottomRight, x, y);
 
-						AddVertFixed(x, y);
-						AddVertFixed(x + 1, y + 1);
-						AddVertLerp(new int2(x, y), new int2(x + 1, y));
+						AddVert(SquarePoint.TopLeft, x, y);
+						AddVert(SquarePoint.BottomRight, x, y);
+						AddVert(SquarePoint.Top, x, y);
 
-						AddVertFixed(x + 1, y + 1);
-						AddVertLerp(new int2(x + 1, y), new int2(x + 1, y + 1));
-						AddVertLerp(new int2(x + 1, y), new int2(x, y));
+						AddVert(SquarePoint.BottomRight, x, y);
+						AddVert(SquarePoint.Right, x, y);
+						AddVert(SquarePoint.Top, x, y);
+
+						AddOutline(SquarePoint.Right, SquarePoint.Top, x, y);
 
 						break;
 					case 12:
-						AddVertFixed(x + 1, y);
-						AddVertFixed(x, y);
-						AddVertLerp(new int2(x, y), new int2(x, y + 1));
+						AddVert(SquarePoint.TopRight, x, y);
+						AddVert(SquarePoint.TopLeft, x, y);
+						AddVert(SquarePoint.Left, x, y);
 
-						AddVertFixed(x + 1, y);
-						AddVertLerp(new int2(x, y), new int2(x, y + 1));
-						AddVertLerp(new int2(x + 1, y), new int2(x + 1, y + 1));
+						AddVert(SquarePoint.TopRight, x, y);
+						AddVert(SquarePoint.Left, x, y);
+						AddVert(SquarePoint.Right, x, y);
+
+						AddOutline(SquarePoint.Left, SquarePoint.Right, x, y);
 
 						break;
 					case 13:
-						AddVertFixed(x, y);
-						AddVertFixed(x, y + 1);
-						AddVertFixed(x + 1, y);
+						AddVert(SquarePoint.TopLeft, x, y);
+						AddVert(SquarePoint.BottomLeft, x, y);
+						AddVert(SquarePoint.TopRight, x, y);;
 
-						AddVertFixed(x + 1, y);
-						AddVertFixed(x, y + 1);
-						AddVertLerp(new int2(x, y + 1), new int2(x + 1, y + 1));
+						AddVert(SquarePoint.TopRight, x, y);;
+						AddVert(SquarePoint.BottomLeft, x, y);
+						AddVert(SquarePoint.Bottom, x, y);
 
-						AddVertFixed(x + 1, y);
-						AddVertLerp(new int2(x, y + 1), new int2(x + 1, y + 1));
-						AddVertLerp(new int2(x + 1, y), new int2(x + 1, y + 1));
+						AddVert(SquarePoint.TopRight, x, y);;
+						AddVert(SquarePoint.Bottom, x, y);
+						AddVert(SquarePoint.Right, x, y);
+
+						AddOutline(SquarePoint.Bottom, SquarePoint.Right, x, y);
 
 						break;
 					case 14:
-						AddVertFixed(x, y);
-						AddVertFixed(x + 1, y + 1);
-						AddVertFixed(x + 1, y);
+						AddVert(SquarePoint.TopLeft, x, y);
+						AddVert(SquarePoint.BottomRight, x, y);
+						AddVert(SquarePoint.TopRight, x, y);;
 
-						AddVertFixed(x + 1, y + 1);
-						AddVertFixed(x, y);
-						AddVertLerp(new int2(x, y), new int2(x, y + 1));
+						AddVert(SquarePoint.BottomRight, x, y);
+						AddVert(SquarePoint.TopLeft, x, y);
+						AddVert(SquarePoint.Left, x, y);
 
-						AddVertFixed(x + 1, y + 1);
-						AddVertLerp(new int2(x, y), new int2(x, y + 1));
-						AddVertLerp(new int2(x, y + 1), new int2(x + 1, y + 1));
+						AddVert(SquarePoint.BottomRight, x, y);
+						AddVert(SquarePoint.Left, x, y);
+						AddVert(SquarePoint.Bottom, x, y);
+
+						AddOutline(SquarePoint.Left, SquarePoint.Bottom, x, y);
 
 						break;
 					case 15:
-						AddVertFixed(x, y);
-						AddVertFixed(x, y + 1);
-						AddVertFixed(x + 1, y);
+						AddVert(SquarePoint.TopLeft, x, y);
+						AddVert(SquarePoint.BottomLeft, x, y);
+						AddVert(SquarePoint.TopRight, x, y);;
 
-						AddVertFixed(x + 1, y);
-						AddVertFixed(x, y + 1);
-						AddVertFixed(x + 1, y + 1);
+						AddVert(SquarePoint.TopRight, x, y);;
+						AddVert(SquarePoint.BottomLeft, x, y);
+						AddVert(SquarePoint.BottomRight, x, y);
 
 						break;
 				}
@@ -267,11 +345,65 @@ struct ChunkJob : IJob {
 		}
 	}
 
-	public void AddVertFixed(int x, int y) {
-        AddVertGlobal(BlockPosToLocalPos(x, y));
+	public void AddOutline(SquarePoint point1, SquarePoint point2, int x, int y) {
+		AddOutline(GetPoint(point1, x, y), GetPoint(point2, x, y));
+	}
+
+	public void AddOutline(float2 point1, float2 point2) {
+		connectedVerts.Add(point1, point2);
+	}
+
+	public float2 GetFixedPoint(int x, int y) {
+        return BlockPosToLocalPos(x, y);
     }
 
-    public void AddVertLerp(int2 point1, int2 point2) {
+	public float2 GetPoint(SquarePoint point, int x, int y) {
+		switch (point) {
+			case SquarePoint.TopLeft:
+				return GetFixedPoint(x, y);
+			case SquarePoint.TopRight:
+				return GetFixedPoint(x + 1, y);
+			case SquarePoint.BottomLeft:
+				return GetFixedPoint(x, y + 1);
+			case SquarePoint.BottomRight:
+				return GetFixedPoint(x + 1, y + 1);
+			
+			case SquarePoint.Top:
+				return GetPointLerp(new int2(x, y), new int2(x + 1, y));
+			case SquarePoint.Bottom:
+				return GetPointLerp(new int2(x, y + 1), new int2(x + 1, y + 1));
+			case SquarePoint.Left:
+				return GetPointLerp(new int2(x, y), new int2(x, y + 1));
+			case SquarePoint.Right:
+				return GetPointLerp(new int2(x + 1, y), new int2(x + 1, y + 1));
+
+			case SquarePoint.CenterFixed:
+				return GetCenterFixed(x, y);
+			case SquarePoint.CenterFixedTopLeft:
+				return GetCenterLerp(x, y, new int2(x, y), true);
+			case SquarePoint.CenterFixedTopRight:
+				return GetCenterLerp(x, y, new int2(x + 1, y), true);
+			case SquarePoint.CenterFixedBottomLeft:
+				return GetCenterLerp(x, y, new int2(x, y + 1), true);
+			case SquarePoint.CenterFixedBottomRight:
+				return GetCenterLerp(x, y, new int2(x + 1, y + 1), true);
+
+			case SquarePoint.CenterTopLeft:
+				return GetCenterLerp(x, y, new int2(x, y));
+			case SquarePoint.CenterTopRight:
+				return GetCenterLerp(x, y, new int2(x + 1, y));
+			case SquarePoint.CenterBottomLeft:
+				return GetCenterLerp(x, y, new int2(x, y + 1));
+			case SquarePoint.CenterBottomRight:
+				return GetCenterLerp(x, y, new int2(x + 1, y + 1));
+
+			default:
+				Debug.LogError($"Invalid Square Point \"{point}\"!");
+				return float2.zero;
+		}
+	}
+
+    public float2 GetPointLerp(int2 point1, int2 point2) {
         float block1 = GetBlock(point1);
         float block2 = GetBlock(point2);
 
@@ -280,14 +412,14 @@ struct ChunkJob : IJob {
         float lerpX = Mathf.Lerp(point1.x, point2.x, time);
         float lerpY = Mathf.Lerp(point1.y, point2.y, time);
 
-        AddVertGlobal(BlockPosToLocalPos(lerpX, lerpY));
+        return BlockPosToLocalPos(lerpX, lerpY);
     }
 
-    public void AddCenterFixed(int x, int y) {
-        AddVertGlobal(BlockPosToLocalPos(x + 0.5f, y + 0.5f));
+    public float2 GetCenterFixed(int x, int y) {
+        return BlockPosToLocalPos(x + 0.5f, y + 0.5f);
     }
 
-    public void AddCenterLerp(int x, int y, int2 cornerPoint, bool isFixed = false) {
+    public float2 GetCenterLerp(int x, int y, int2 cornerPoint, bool isFixed = false) {
         float centerBlock = GetCenterAvg(x, y);
         float cornerBlock = GetBlock(cornerPoint);
 
@@ -298,17 +430,25 @@ struct ChunkJob : IJob {
         float lerpX = Mathf.Lerp(x + 0.5f, cornerPoint.x, time);
         float lerpY = Mathf.Lerp(y + 0.5f, cornerPoint.y, time);
 
-        AddVertGlobal(BlockPosToLocalPos(lerpX, lerpY));
+        return BlockPosToLocalPos(lerpX, lerpY);
     }
 
-    void AddVertGlobal(float2 pos) {
-        float3 vert = new float3(pos.x, pos.y, 0);
-        int vertIndex = verts.IndexOf(vert);
+	void AddVert(SquarePoint point, int x, int y) {
+		AddVert(GetPoint(point, x, y));
+	}
 
-        if (vertIndex == -1) {
-            vertIndex = verts.Length;
-            verts.Add(vert);
-        }
+    void AddVert(float2 pos) {
+        float3 vert = new float3(pos.x, pos.y, 0);
+		int vertIndex;
+
+		if (existingVerts.ContainsKey(vert)) {
+			vertIndex = existingVerts[vert];
+		} else {
+			vertIndex = verts.Length;
+			verts.Add(vert);
+
+			existingVerts.Add(vert, vertIndex);
+		}
 
         tris.Add(vertIndex);
     }
