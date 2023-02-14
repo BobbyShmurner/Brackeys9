@@ -1,5 +1,8 @@
 using System;
+using System.Linq;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+
 using UnityEngine;
 
 [RequireComponent(typeof(MeshRenderer), typeof(MeshFilter))]
@@ -29,6 +32,8 @@ public class Chunk : MonoBehaviour {
 
         // Subtract 1 to account for the extra points on the right and bottom sides
         Size = new Vector2Int(blocks.Count - 1, blocks[0].Count - 1);
+
+        transform.position = new Vector3(Pos.x * Size.x * UnitsPerBlock, Pos.y * Size.y * UnitsPerBlock, 0);
     }
 
     public float GetBlock(Vector2Int pos) {
@@ -57,8 +62,8 @@ public class Chunk : MonoBehaviour {
         return (GetBlock(x, y) + GetBlock(x + 1, y) + GetBlock(x, y + 1) + GetBlock(x + 1, y + 1)) * 0.25f;
     }
 
-    public Vector2 LocalPosToGlobalPos(float x, float y) {
-        return new Vector2((x + Pos.x * Size.x) * UnitsPerBlock, (y + Pos.y * Size.y) * UnitsPerBlock);
+    public Vector2 BlockPosToLocalPos(float x, float y) {
+        return new Vector2(x * UnitsPerBlock, y * UnitsPerBlock);
     }
 
 	public void GenerateMesh() {
@@ -284,7 +289,7 @@ public class Chunk : MonoBehaviour {
 }
 
 class MeshData {
-    List<Vector3> verts = new List<Vector3>();
+    OrderedDictionary vertMap = new OrderedDictionary();
     List<int> tris = new List<int>();
     Chunk chunk; 
 
@@ -293,7 +298,7 @@ class MeshData {
     }
 
     public void AddVertFixed(int x, int y) {
-        AddVertGlobal(chunk.LocalPosToGlobalPos(x, y));
+        AddVertGlobal(chunk.BlockPosToLocalPos(x, y));
     }
 
     public void AddVertLerp(Vector2Int point1, Vector2Int point2) {
@@ -305,11 +310,11 @@ class MeshData {
         float lerpX = Mathf.Lerp(point1.x, point2.x, time);
         float lerpY = Mathf.Lerp(point1.y, point2.y, time);
 
-        AddVertGlobal(chunk.LocalPosToGlobalPos(lerpX, lerpY));
+        AddVertGlobal(chunk.BlockPosToLocalPos(lerpX, lerpY));
     }
 
     public void AddCenterFixed(int x, int y) {
-        AddVertGlobal(chunk.LocalPosToGlobalPos(x + 0.5f, y + 0.5f));
+        AddVertGlobal(chunk.BlockPosToLocalPos(x + 0.5f, y + 0.5f));
     }
 
     public void AddCenterLerp(int x, int y, Vector2Int cornerPoint, bool isFixed = false) {
@@ -323,17 +328,19 @@ class MeshData {
         float lerpX = Mathf.Lerp(x + 0.5f, cornerPoint.x, time);
         float lerpY = Mathf.Lerp(y + 0.5f, cornerPoint.y, time);
 
-        AddVertGlobal(chunk.LocalPosToGlobalPos(lerpX, lerpY));
+        AddVertGlobal(chunk.BlockPosToLocalPos(lerpX, lerpY));
     }
 
     void AddVertGlobal(Vector2 pos) {
         Vector3 vert = (Vector3)pos;
-        int vertIndex = verts.IndexOf(vert);
+        int vertIndex = 0;
 
-        if (vertIndex == -1) {
-            vertIndex = verts.Count;
-            verts.Add(vert);
+        if (!vertMap.Contains(vert)) {
+            vertIndex = vertMap.Count;
+            vertMap[vert] = vertIndex;
         }
+
+        vertIndex = (int)vertMap[vert];
 
         tris.Add(vertIndex);
     }
@@ -341,7 +348,10 @@ class MeshData {
     public Mesh CreateMesh() {
         Mesh mesh = new Mesh();
 
-        mesh.vertices = verts.ToArray();
+        Vector3[] verts = new Vector3[vertMap.Keys.Count];
+        vertMap.Keys.CopyTo(verts, 0);
+
+        mesh.vertices = verts;
         mesh.triangles = tris.ToArray();
 
         mesh.RecalculateNormals();
