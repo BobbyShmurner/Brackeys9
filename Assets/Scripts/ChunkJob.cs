@@ -177,8 +177,6 @@ struct ChunkJob : IJob {
 							AddOutline(SquarePoint.CenterTopRight, SquarePoint.Right, x, y);
 						}
 
-						Debug.Log("5");
-
 						break;
 					case 6:
 						AddVert(SquarePoint.BottomRight, x, y);
@@ -266,8 +264,6 @@ struct ChunkJob : IJob {
 							AddOutline(SquarePoint.Left, SquarePoint.CenterTopLeft, x, y);
 							AddOutline(SquarePoint.CenterTopLeft, SquarePoint.Top, x, y);
 						}
-
-						Debug.Log("10");
 
 						break;
 					case 11:
