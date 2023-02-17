@@ -16,8 +16,9 @@ public class World : MonoBehaviour
     public int Seed { get; private set; }
 
     List<Vector2Int> chunksToCreate = new List<Vector2Int>();
-    HashSet<Vector2Int> generatedChunks = new HashSet<Vector2Int>();
+    Dictionary<Vector2Int, Chunk> generatedChunks = new Dictionary<Vector2Int, Chunk>();
 
+    bool isBeingDeleted = false;
     IEnumerator chunkCoro;
 
     public void Init(Vector2Int chunkSize, float blockThreshold, float mapSize, float scale, float blocksPerUnit, int seed, int offset) {
@@ -36,17 +37,23 @@ public class World : MonoBehaviour
     }
 
     public void StopGeneration() {
-        StopCoroutine(chunkCoro);
+        if (chunkCoro != null) StopCoroutine(chunkCoro);
+        chunkCoro = null;
     }
-
-    void OnEnable() => StartGeneration();
-    void OnDisable() => StopGeneration();
 
     public Vector2Int WorldPosToChunkPos(Vector3 pos) {
         return new Vector2Int(
-            Mathf.FloorToInt(pos.x / (UnitsPerBlock * ChunkSize.x)),
-            Mathf.FloorToInt(pos.y / (UnitsPerBlock * ChunkSize.y))
+            Mathf.FloorToInt((pos.x - transform.position.x) / (UnitsPerBlock * ChunkSize.x)),
+            Mathf.FloorToInt((pos.y - transform.position.y) / (UnitsPerBlock * ChunkSize.y))
         );
+    }
+
+    public Vector3 ChunkPosToWorldPos(Vector2Int pos) {
+        return new Vector3(
+            pos.x * ChunkSize.x * UnitsPerBlock,
+            pos.y * ChunkSize.y * UnitsPerBlock,
+            0
+        ) + transform.position;
     }
 
     public bool IsOutsideChunkDistance(Vector2Int pos) {
@@ -62,7 +69,7 @@ public class World : MonoBehaviour
     }
 
     public Vector2 WorldPosToLocalPos(Vector3 pos) {
-        return pos / UnitsPerBlock;
+        return (pos - transform.position) / UnitsPerBlock;
     }
 
     public float GetWorldPerlinValue(Vector3 pos) {
@@ -83,11 +90,19 @@ public class World : MonoBehaviour
     }
 
     void OnDestroy() {
+        isBeingDeleted = true;
+
         StopGeneration();
         chunksToCreate.Clear();
+
+        foreach (Chunk chunk in generatedChunks.Values) {
+            chunk.Delete();
+        }
     }
 
     public void ChunkDeleted(Vector2Int pos) {
+        if (isBeingDeleted) return;
+        
         chunksToCreate.Remove(pos);
         generatedChunks.Remove(pos);
     }
@@ -127,7 +142,7 @@ public class World : MonoBehaviour
 
     public void CreateChunk(int x, int y) => CreateChunk(new Vector2Int(x, y));
     public void CreateChunk(Vector2Int pos) {
-        if (generatedChunks.Contains(pos) || chunksToCreate.Contains(pos)) { 
+        if (generatedChunks.ContainsKey(pos) || chunksToCreate.Contains(pos)) { 
             return;
         }
 
@@ -142,32 +157,37 @@ public class World : MonoBehaviour
             }
 
             Vector2Int pos = chunksToCreate[0];
-            List<float> blocks = new List<float>();
 
             if (IsOutsideChunkDistance(pos)) {
                 chunksToCreate.RemoveAt(0);
                 continue;
             }
 
-            // We want to generate an extra point on the right and bottom sides to prevent seams in the chunks
-            for (int x = 0; x < ChunkSize.x + 1; x++) {
-                for (int y = 0; y < ChunkSize.y + 1; y++) {
-                    blocks.Add(GetLocalPerlinValue(pos.x * ChunkSize.x + x, pos.y * ChunkSize.y + y));
-                }
-            }
-
-            GameObject newGO = new GameObject($"Chunk ({pos.x}, {pos.y})");
-            newGO.transform.parent = transform;
-
-            Chunk newChunk = newGO.AddComponent<Chunk>();
-            newChunk.GetComponent<MeshRenderer>().sharedMaterial = WorldManager.WorldMat;
-            newChunk.Init(this, pos, blocks);
-
-            newChunk.GenerateMesh();
-
+            CreateChunkInstant(pos);
             chunksToCreate.RemoveAt(0);
-            generatedChunks.Add(pos);
+            
             yield return null;
         }
+    }
+
+    public void CreateChunkInstant(Vector2Int pos, bool awaitJob = false) {
+        List<float> blocks = new List<float>();
+
+        // We want to generate an extra point on the right and bottom sides to prevent seams in the chunks
+        for (int x = 0; x < ChunkSize.x + 1; x++) {
+            for (int y = 0; y < ChunkSize.y + 1; y++) {
+                blocks.Add(GetLocalPerlinValue(pos.x * ChunkSize.x + x, pos.y * ChunkSize.y + y));
+            }
+        }
+
+        GameObject newGO = new GameObject($"Chunk ({pos.x}, {pos.y})");
+        newGO.transform.parent = transform;
+
+        Chunk newChunk = newGO.AddComponent<Chunk>();
+        newChunk.GetComponent<MeshRenderer>().sharedMaterial = WorldManager.WorldMat;
+        newChunk.Init(this, pos, blocks);
+        newChunk.GenerateMesh(awaitJob);
+
+        generatedChunks.Add(pos, newChunk);
     }
 }

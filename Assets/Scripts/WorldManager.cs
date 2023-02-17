@@ -8,7 +8,7 @@ using Random = System.Random;
 public class WorldManager : MonoBehaviour
 {
     public static WorldManager Instance { get; private set; }
-    public static World ActiveWorld { get; private set; }
+    public static World ActiveWorld;
     
     public static List<Transform> DespawnTrackers { get; private set; } = new List<Transform>();
 
@@ -44,13 +44,6 @@ public class WorldManager : MonoBehaviour
         CreateWorld();
     }
 
-    void Update() {
-        if (Input.GetMouseButtonDown(0)) {
-            Destroy(ActiveWorld.gameObject);
-            CreateWorld();
-        }
-    }
-
     public static World CreateWorld(string seed) {
         Instance.seed = seed;
         return CreateWorld();
@@ -65,7 +58,6 @@ public class WorldManager : MonoBehaviour
         World world = worldGO.AddComponent<World>();
         world.Init(Instance.chunkSize, Instance.blockThreshold, Instance.mapSize, Instance.scale, Instance.blocksPerUnit, seed, offset);
 
-        ActiveWorld = world;
         return world;
     }
 

@@ -40,10 +40,10 @@ public class Chunk : MonoBehaviour {
         Pos = pos;
         this.blocks = blocks.ToArray();
 
-        transform.position = new Vector3(Pos.x * World.ChunkSize.x * World.UnitsPerBlock, Pos.y * World.ChunkSize.y * World.UnitsPerBlock, 0);
+        transform.position = World.ChunkPosToWorldPos(pos);
     }
 
-    public void GenerateMesh() {
+    public void GenerateMesh(bool awaitJob) {
         NativeHashMap<float3, int> existingVerts = new NativeHashMap<float3, int>(128, Allocator.TempJob);
         NativeArray<float> blocksArray = new NativeArray<float>(blocks, Allocator.TempJob);
 
@@ -65,6 +65,7 @@ public class Chunk : MonoBehaviour {
         };
 
         JobHandle jobHandle = job.Schedule();
+        if (awaitJob) jobHandle.Complete();
 
         StartCoroutine(GenerateMeshCoro(job, jobHandle));
     }

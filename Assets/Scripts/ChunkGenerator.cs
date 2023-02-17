@@ -11,6 +11,6 @@ public class ChunkGenerator : MonoBehaviour
     }
 
     void Update() {
-        WorldManager.ActiveWorld.CreateChunks(radius * radius, transform.position);
+        WorldManager.ActiveWorld?.CreateChunks(radius * radius, transform.position);
     }
 }
