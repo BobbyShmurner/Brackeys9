@@ -134,6 +134,7 @@ GameObject:
   - component: {fileID: 410025977}
   - component: {fileID: 410025979}
   - component: {fileID: 410025978}
+  - component: {fileID: 410025980}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -229,6 +230,19 @@ BoxCollider2D:
   serializedVersion: 2
   m_Size: {x: 0.2, y: 0.2}
   m_EdgeRadius: 0
+--- !u!114 &410025980
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 410025976}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 75d9e4379ad33fa4899e5e6ac0d04b16, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  radius: 5
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -348,7 +362,7 @@ GameObject:
   - component: {fileID: 684971344}
   - component: {fileID: 684971343}
   m_Layer: 0
-  m_Name: Map
+  m_Name: World Manager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -368,13 +382,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   worldMat: {fileID: 2100000, guid: f9a3e77b3664eb44998540ff1aab564d, type: 2}
   chunkSize: {x: 32, y: 32}
-  worldSize: {x: 6, y: 6}
   blockThreshold: 0.35
   mapSize: 400
   scale: 20
   blocksPerUnit: 5
   useRandomSeed: 1
-  m_Seed: 
+  seed: 
 --- !u!4 &684971344
 Transform:
   m_ObjectHideFlags: 0

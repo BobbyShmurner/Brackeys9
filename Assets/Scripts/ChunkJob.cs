@@ -50,43 +50,25 @@ struct ChunkJob : IJob {
 	public int chunkWidth;
 	public int chunkHeight;
 
-	public int2 IndexToCoords(int i) {
-		return new int2(Mathf.FloorToInt(i / (chunkHeight + 1)), i % (chunkHeight + 1));
-	}
+	public int2 IndexToCoords(int i) => new int2(Mathf.FloorToInt(i / (chunkHeight + 1)), i % (chunkHeight + 1));
 
-	public int CoordsToIndex(int x, int y) {
-		return x * (chunkHeight + 1) + y;
-	}
+	public int CoordsToIndex(int x, int y) => x * (chunkHeight + 1) + y;
 
-	public float GetBlock(int2 pos) {
-        return GetBlock(pos.x, pos.y);
-    }
-
+	public float GetBlock(int2 pos) => GetBlock(pos.x, pos.y);
     public float GetBlock(int x, int y) {
         // We use > instead of >= because we generate extra points on the right and bottom sides
         if (x < 0 || x > chunkWidth || y < 0 || y > chunkHeight) return 0;
         return blocks[CoordsToIndex(x, y)];
     }
 
-    public bool IsBlock(int2 pos) {
-        return IsBlock(pos.x, pos.y);
-    }
+    public bool IsBlock(int2 pos) => IsBlock(pos.x, pos.y);
+    public bool IsBlock(int x, int y) => GetBlock(x, y) < blockThreshold;
 
-    public bool IsBlock(int x, int y) {
-        return GetBlock(x, y) < blockThreshold;
-    }
+    public bool IsCenterBlock(int x, int y) => GetCenterAvg(x, y) < blockThreshold;
 
-    public bool IsCenterBlock(int x, int y) {
-        return GetCenterAvg(x, y) < blockThreshold;
-    }
+    public float GetCenterAvg(int x, int y) => (GetBlock(x, y) + GetBlock(x + 1, y) + GetBlock(x, y + 1) + GetBlock(x + 1, y + 1)) * 0.25f;
 
-    public float GetCenterAvg(int x, int y) {
-        return (GetBlock(x, y) + GetBlock(x + 1, y) + GetBlock(x, y + 1) + GetBlock(x + 1, y + 1)) * 0.25f;
-    }
-
-	public float2 BlockPosToLocalPos(float x, float y) {
-        return new float2(x * unitsPerBlock, y * unitsPerBlock);
-    }
+	public float2 BlockPosToLocalPos(float x, float y) =>new float2(x * unitsPerBlock, y * unitsPerBlock);
 
 	public void Execute() {
 		for (int x = 0; x < chunkWidth; x++) {
@@ -341,17 +323,11 @@ struct ChunkJob : IJob {
 		}
 	}
 
-	public void AddOutline(SquarePoint point1, SquarePoint point2, int x, int y) {
-		AddOutline(GetPoint(point1, x, y), GetPoint(point2, x, y));
-	}
+	public void AddOutline(SquarePoint point1, SquarePoint point2, int x, int y) => AddOutline(GetPoint(point1, x, y), GetPoint(point2, x, y));
+	public void AddOutline(float2 point1, float2 point2) => connectedVerts.Add(point1, point2);
 
-	public void AddOutline(float2 point1, float2 point2) {
-		connectedVerts.Add(point1, point2);
-	}
-
-	public float2 GetFixedPoint(int x, int y) {
-        return BlockPosToLocalPos(x, y);
-    }
+	public float2 GetFixedPoint(int x, int y) => BlockPosToLocalPos(x, y);
+	public float2 GetCenterFixed(int x, int y) => BlockPosToLocalPos(x + 0.5f, y + 0.5f);
 
 	public float2 GetPoint(SquarePoint point, int x, int y) {
 		switch (point) {
@@ -411,10 +387,6 @@ struct ChunkJob : IJob {
         return BlockPosToLocalPos(lerpX, lerpY);
     }
 
-    public float2 GetCenterFixed(int x, int y) {
-        return BlockPosToLocalPos(x + 0.5f, y + 0.5f);
-    }
-
     public float2 GetCenterLerp(int x, int y, int2 cornerPoint, bool isFixed = false) {
         float centerBlock = GetCenterAvg(x, y);
         float cornerBlock = GetBlock(cornerPoint);
@@ -429,10 +401,7 @@ struct ChunkJob : IJob {
         return BlockPosToLocalPos(lerpX, lerpY);
     }
 
-	void AddVert(SquarePoint point, int x, int y) {
-		AddVert(GetPoint(point, x, y));
-	}
-
+	void AddVert(SquarePoint point, int x, int y) => AddVert(GetPoint(point, x, y));
     void AddVert(float2 pos) {
         float3 vert = new float3(pos.x, pos.y, 0);
 		int vertIndex;

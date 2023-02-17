@@ -12,12 +12,9 @@ using System.Collections;
 
 [RequireComponent(typeof(MeshRenderer), typeof(MeshFilter))]
 public class Chunk : MonoBehaviour {
-    public int Seed { get; private set; }
     public bool HasGenerated { get; private set; } = false;
-    public float BlockThreshold { get; private set; }
-    public float UnitsPerBlock { get; private set; }
+    public World World { get; private set; }
     public Vector2Int Pos { get; private set; }
-    public Vector2Int Size { get; private set; }
 
     bool shouldDelete = false;
     float[] blocks;
@@ -30,15 +27,20 @@ public class Chunk : MonoBehaviour {
         filter = GetComponent<MeshFilter>();
     }
 
-    public void Init(int seed, float blockThreshold, float unitsPerBlock, Vector2Int pos, Vector2Int size, List<float> blocks) {
-        Pos = pos;
-        Seed = seed;
-        this.blocks = blocks.ToArray();
-        UnitsPerBlock = unitsPerBlock;
-        BlockThreshold = blockThreshold;
-        Size = size;
+    public bool IsOutsideChunkDistance() => World.IsOutsideChunkDistance(Pos);
 
-        transform.position = new Vector3(Pos.x * Size.x * UnitsPerBlock, Pos.y * Size.y * UnitsPerBlock, 0);
+    void Update() {
+        if (shouldDelete) return;
+
+        if (IsOutsideChunkDistance()) Delete();
+    }
+
+    public void Init(World world, Vector2Int pos, List<float> blocks) {
+        World = world;
+        Pos = pos;
+        this.blocks = blocks.ToArray();
+
+        transform.position = new Vector3(Pos.x * World.ChunkSize.x * World.UnitsPerBlock, Pos.y * World.ChunkSize.y * World.UnitsPerBlock, 0);
     }
 
     public void GenerateMesh() {
@@ -56,10 +58,10 @@ public class Chunk : MonoBehaviour {
             verts = verts,
             tris = tris,
 
-            blockThreshold = BlockThreshold,
-            unitsPerBlock = UnitsPerBlock,
-            chunkWidth = Size.x,
-            chunkHeight = Size.y
+            blockThreshold = World.BlockThreshold,
+            unitsPerBlock = World.UnitsPerBlock,
+            chunkWidth = World.ChunkSize.x,
+            chunkHeight = World.ChunkSize.y
         };
 
         JobHandle jobHandle = job.Schedule();
@@ -136,6 +138,7 @@ public class Chunk : MonoBehaviour {
 
     public void Delete() {
         shouldDelete = true;
+        World.ChunkDeleted(Pos);
         if (HasGenerated) Destroy(gameObject);
-    }  
+    }
 }
