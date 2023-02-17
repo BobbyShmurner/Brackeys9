@@ -14,35 +14,61 @@ public class GameManager : MonoBehaviour {
         Instance = this;
     }
 
-    public static void GotoNextWorld() {
-        World newWorld = null;
+    public static new void StartCoroutine(IEnumerator routine) {
+        (Instance as MonoBehaviour).StartCoroutine(routine);
+    }
+
+    public static void GotoNextWorld(bool instant = false) {
+        StartCoroutine(GotoNextWorld_Coro(instant));
+    }
+
+    static IEnumerator GotoNextWorld_Coro(bool instant) {
+        bool foundValid = false;
 
         Vector3 playerPos = PlayerController.Instance.transform.position;
         Vector3 extents = PlayerController.col.bounds.extents;
+        int spawnRadius = PlayerController.Instance.GetComponent<ChunkGenerator>().Radius;
 
-        PlayerController.rb.velocity = Vector2.zero;
+        World newWorld = WorldManager.CreateWorld();
 
-        for (int i = 0; i < 100; i++) {
-            newWorld = WorldManager.CreateWorld();
+        for (int i = 0; i < 1000; i++) {
             newWorld.transform.position = playerPos;
 
-            if (!newWorld.IsInsideBlock(playerPos) && !newWorld.IsInsideBlock(playerPos + extents) && !newWorld.IsInsideBlock(playerPos - extents)) break;
-            Destroy(newWorld.gameObject);
+            for (float x = -2f; x <= 2f; x += 0.1f) {
+                for (float y = -2f; y <= 2f; y += 0.1f) {
+                    if (newWorld.IsInsideBlock(playerPos + new Vector3(x, y, 0))) {
+                        goto InvalidWorld;
+                    }
+                }
+            }
+
+            foundValid = true;
+            break;
+            
+            InvalidWorld:
+                newWorld.SetNextOffset();
+        }
+
+        if (!foundValid) {
+            Debug.LogError("Failed to generate a world!!!");
+            yield break;
+        }
+
+        newWorld.gameObject.SetActive(false);
+        newWorld.CreateChunks(spawnRadius * spawnRadius, Vector2Int.zero, instant);
+        newWorld.StartGeneration();
+
+        while (newWorld.IsWaitingForChunksToGenerate) {
+            yield return null;
         }
 
         Destroy(WorldManager.ActiveWorld?.gameObject);
         WorldManager.ActiveWorld = newWorld;
-
-        newWorld.CreateChunkInstant(new Vector2Int(0, 0), true);
-        newWorld.CreateChunkInstant(new Vector2Int(0, -1), true);
-        newWorld.CreateChunkInstant(new Vector2Int(-1, 0), true);
-        newWorld.CreateChunkInstant(new Vector2Int(-1, -1), true);
-
-        newWorld.StartGeneration();
+        newWorld.gameObject.SetActive(true);
     }
 
     void Start() {
-        GotoNextWorld();
+        GotoNextWorld(true);
     }
 
     void Update() {

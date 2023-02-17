@@ -15,29 +15,44 @@ public class World : MonoBehaviour
     public int Offset { get; private set; }
     public int Seed { get; private set; }
 
+    public bool IsWaitingForChunksToGenerate { get => chunksToCreate.Count != 0; }
+    public bool IsGenerating { get => chunkCoro != null; }
+
+    Random rand;
+
     List<Vector2Int> chunksToCreate = new List<Vector2Int>();
     Dictionary<Vector2Int, Chunk> generatedChunks = new Dictionary<Vector2Int, Chunk>();
 
     bool isBeingDeleted = false;
     IEnumerator chunkCoro;
 
-    public void Init(Vector2Int chunkSize, float blockThreshold, float mapSize, float scale, float blocksPerUnit, int seed, int offset) {
+    public void Init(Vector2Int chunkSize, float blockThreshold, float mapSize, float scale, float blocksPerUnit, int seed) {
         ChunkSize = chunkSize;
         BlockThreshold = blockThreshold;
         MapSize = mapSize;
         InverseScale = 1 / scale;
         UnitsPerBlock = 1 / blocksPerUnit;
         Seed = seed;
-        Offset = offset;
+
+        rand = new Random(seed);
+        SetNextOffset();
+    }
+
+    public void SetNextOffset() {
+        Offset = rand.Next(-500000, 500000);
     }
 
     public void StartGeneration() {
+        if (IsGenerating) return;
+
         chunkCoro = CreateChunkCoro();
-        StartCoroutine(chunkCoro);
+        GameManager.StartCoroutine(chunkCoro);
     }
 
     public void StopGeneration() {
-        if (chunkCoro != null) StopCoroutine(chunkCoro);
+        if (!IsGenerating) return;
+        
+        StopCoroutine(chunkCoro);
         chunkCoro = null;
     }
 
@@ -96,7 +111,7 @@ public class World : MonoBehaviour
         chunksToCreate.Clear();
 
         foreach (Chunk chunk in generatedChunks.Values) {
-            chunk.Delete();
+            Destroy(chunk.gameObject);
         }
     }
 
@@ -107,15 +122,15 @@ public class World : MonoBehaviour
         generatedChunks.Remove(pos);
     }
 
-    public void CreateChunks(int amount, Vector3 worldPos) => CreateChunks(amount, WorldPosToChunkPos(worldPos));
-    public void CreateChunks(int amount, Vector2Int startPos) {
+    public void CreateChunks(int amount, Vector3 worldPos, bool instant = false) => CreateChunks(amount, WorldPosToChunkPos(worldPos), instant);
+    public void CreateChunks(int amount, Vector2Int startPos, bool instant = false) {
         bool negate = false, vertical = false;
         int step = 1, stepAmount = 0;
 
         int x = startPos.x;
         int y = startPos.y;
 
-        CreateChunk(x, y);
+        CreateChunk(x, y, instant);
 
         for (int i = 0; i < amount - 1; i++) {
             stepAmount += 1;
@@ -136,13 +151,18 @@ public class World : MonoBehaviour
                 }
             }
 
-            CreateChunk(x, y);
+            CreateChunk(x, y, instant);
         }
     }
 
-    public void CreateChunk(int x, int y) => CreateChunk(new Vector2Int(x, y));
-    public void CreateChunk(Vector2Int pos) {
-        if (generatedChunks.ContainsKey(pos) || chunksToCreate.Contains(pos)) { 
+    public void CreateChunk(int x, int y, bool instant = false) => CreateChunk(new Vector2Int(x, y), instant);
+    public void CreateChunk(Vector2Int pos, bool instant = false) {
+        if (instant) {
+            CreateChunkInternal(pos, true);
+            return;
+        }
+
+        if (chunksToCreate.Contains(pos)) { 
             return;
         }
 
@@ -163,14 +183,16 @@ public class World : MonoBehaviour
                 continue;
             }
 
-            CreateChunkInstant(pos);
+            CreateChunkInternal(pos, false);
             chunksToCreate.RemoveAt(0);
             
             yield return null;
         }
     }
 
-    public void CreateChunkInstant(Vector2Int pos, bool awaitJob = false) {
+    void CreateChunkInternal(Vector2Int pos, bool instant) {
+        if (generatedChunks.ContainsKey(pos)) return;
+
         List<float> blocks = new List<float>();
 
         // We want to generate an extra point on the right and bottom sides to prevent seams in the chunks
@@ -186,7 +208,7 @@ public class World : MonoBehaviour
         Chunk newChunk = newGO.AddComponent<Chunk>();
         newChunk.GetComponent<MeshRenderer>().sharedMaterial = WorldManager.WorldMat;
         newChunk.Init(this, pos, blocks);
-        newChunk.GenerateMesh(awaitJob);
+        newChunk.GenerateMesh(instant);
 
         generatedChunks.Add(pos, newChunk);
     }

@@ -287,7 +287,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75d9e4379ad33fa4899e5e6ac0d04b16, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  radius: 5
+  <Radius>k__BackingField: 5
 --- !u!114 &410025981
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -444,8 +444,8 @@ MonoBehaviour:
   scale: 20
   blocksPerUnit: 5
   despawnDistance: 5
-  useRandomSeed: 1
-  seed: 
+  useRandomSeed: 0
+  seed: Heeeheeee
 --- !u!4 &684971344
 Transform:
   m_ObjectHideFlags: 0

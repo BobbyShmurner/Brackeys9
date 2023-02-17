@@ -4,13 +4,13 @@ using UnityEngine;
 
 public class ChunkGenerator : MonoBehaviour
 {
-    [SerializeField] int radius = 5;
+    [field: SerializeField] public int Radius { get; private set; } = 5;
 
     void Start() {
         WorldManager.DespawnTrackers.Add(transform);
     }
 
     void Update() {
-        WorldManager.ActiveWorld?.CreateChunks(radius * radius, transform.position);
+        WorldManager.ActiveWorld?.CreateChunks(Radius * Radius, transform.position);
     }
 }

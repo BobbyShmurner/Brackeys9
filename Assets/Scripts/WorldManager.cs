@@ -22,7 +22,6 @@ public class WorldManager : MonoBehaviour
     [SerializeField] bool useRandomSeed = true;
     [SerializeField] string seed;
 
-
     public static Material WorldMat {
         get => Instance.worldMat;
     }
@@ -40,39 +39,26 @@ public class WorldManager : MonoBehaviour
         Instance = this;
     }
 
-    void Start() {
-        CreateWorld();
-    }
-
     public static World CreateWorld(string seed) {
         Instance.seed = seed;
         return CreateWorld();
     }
 
     public static World CreateWorld() {
-        Instance.GetSeedAndOffset(out int seed, out int offset);
+        int seed = Instance.GetSeed();
 
         GameObject worldGO = new GameObject($"World ({seed})");
         worldGO.transform.parent = Instance.transform;
 
         World world = worldGO.AddComponent<World>();
-        world.Init(Instance.chunkSize, Instance.blockThreshold, Instance.mapSize, Instance.scale, Instance.blocksPerUnit, seed, offset);
+        world.Init(Instance.chunkSize, Instance.blockThreshold, Instance.mapSize, Instance.scale, Instance.blocksPerUnit, seed);
 
         return world;
     }
 
-    void GetSeedAndOffset(out int seed, out int offset) {
-        if (useRandomSeed) seed = (int)DateTime.Now.Ticks;
-        else {
-            if (int.TryParse(this.seed, out int seedInt)) {
-                seed = seedInt;
-            } else {
-                seed = this.seed.GetHashCode();
-            }
-        }
-
-        offset = GetRandomOffset(seed);
+    int GetSeed() {
+        if (useRandomSeed) return (int)DateTime.Now.Ticks;
+        if (int.TryParse(this.seed, out int seedInt)) return seedInt;
+        return this.seed.GetHashCode();
     }
-
-    int GetRandomOffset(int seed) => new Random(seed).Next(-500000, 500000);
 }

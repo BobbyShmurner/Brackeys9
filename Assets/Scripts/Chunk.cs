@@ -16,11 +16,12 @@ public class Chunk : MonoBehaviour {
     public World World { get; private set; }
     public Vector2Int Pos { get; private set; }
 
-    bool shouldDelete = false;
     float[] blocks;
 
 	new MeshRenderer renderer;
+    IEnumerator generateCoro;
     MeshFilter filter;
+    ChunkJob job;
 
     void Awake() {
         renderer = GetComponent<MeshRenderer>();
@@ -30,9 +31,7 @@ public class Chunk : MonoBehaviour {
     public bool IsOutsideChunkDistance() => World.IsOutsideChunkDistance(Pos);
 
     void Update() {
-        if (shouldDelete) return;
-
-        if (IsOutsideChunkDistance()) Delete();
+        if (IsOutsideChunkDistance()) Destroy(gameObject);
     }
 
     public void Init(World world, Vector2Int pos, List<float> blocks) {
@@ -43,7 +42,7 @@ public class Chunk : MonoBehaviour {
         transform.position = World.ChunkPosToWorldPos(pos);
     }
 
-    public void GenerateMesh(bool awaitJob) {
+    public void GenerateMesh(bool instant) {
         NativeHashMap<float3, int> existingVerts = new NativeHashMap<float3, int>(128, Allocator.TempJob);
         NativeArray<float> blocksArray = new NativeArray<float>(blocks, Allocator.TempJob);
 
@@ -51,7 +50,7 @@ public class Chunk : MonoBehaviour {
         NativeList<float3> verts = new NativeList<float3>(Allocator.Persistent);
         NativeList<int> tris = new NativeList<int>(Allocator.Persistent);
 
-        ChunkJob job = new ChunkJob() {
+        job = new ChunkJob() {
             connectedVerts = connectedVerts,
             existingVerts = existingVerts,
             blocks = blocksArray,
@@ -65,12 +64,13 @@ public class Chunk : MonoBehaviour {
         };
 
         JobHandle jobHandle = job.Schedule();
-        if (awaitJob) jobHandle.Complete();
+        if (instant) jobHandle.Complete();
 
-        StartCoroutine(GenerateMeshCoro(job, jobHandle));
+        generateCoro = GenerateMeshCoro(jobHandle, instant);
+        GameManager.StartCoroutine(generateCoro);
     }
 
-    IEnumerator GenerateMeshCoro(ChunkJob job, JobHandle jobHandle) {
+    IEnumerator GenerateMeshCoro(JobHandle jobHandle, bool instant) {
         while (!jobHandle.IsCompleted) {
             yield return null;
         }
@@ -90,7 +90,7 @@ public class Chunk : MonoBehaviour {
         mesh.RecalculateNormals();
         mesh.name = $"Chunk ({Pos.x}, {Pos.y})";
 
-        filter.mesh = mesh;
+        GetComponent<MeshFilter>().mesh = mesh;
 
         // Collider Stuff
 
@@ -120,26 +120,23 @@ public class Chunk : MonoBehaviour {
             }
             
             col.SetPoints(points);
-            yield return null;
+            if (!instant) yield return null;
         }
 
         HasGenerated = true;
-        DisposeNativeContainers(job);
-
-        if (shouldDelete) {
-            Destroy(gameObject);
-        }
+        DisposeNativeContainers();
     }
 
-    void DisposeNativeContainers(ChunkJob job) {
-        job.connectedVerts.Dispose();
-        job.verts.Dispose();
-        job.tris.Dispose();
+    void DisposeNativeContainers() {
+        if (job.connectedVerts.IsCreated) job.connectedVerts.Dispose();
+        if (job.existingVerts.IsCreated) job.existingVerts.Dispose();
+		if (job.blocks.IsCreated) job.blocks.Dispose();
+        if (job.verts.IsCreated) job.verts.Dispose();
+        if (job.tris.IsCreated) job.tris.Dispose();
     }
 
-    public void Delete() {
-        shouldDelete = true;
+    public void OnDestroy() {
+        DisposeNativeContainers();
         World.ChunkDeleted(Pos);
-        if (HasGenerated) Destroy(gameObject);
     }
 }
